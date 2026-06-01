@@ -129,7 +129,7 @@
     @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-white/20 dark:border-slate-800/20 shadow-sm;
   }
   .neumorphic-shadow {
-    box-shadow: 20px 20px 60px #d1d9e6, -20px -20px 60px var(--color-card)fff;
+    box-shadow: 20px 20px 60px #d1d9e6, -20px -20px 60px #ffffff;
   }
   .dark .neumorphic-shadow {
     box-shadow: 10px 10px 30px #050505, -10px -10px 30px #1a1a1a;
