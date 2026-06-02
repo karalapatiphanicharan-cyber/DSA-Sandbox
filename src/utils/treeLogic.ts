@@ -2,51 +2,61 @@ import { TreeState } from '../types/structures';
 
 const getHeight = (node: TreeState | null): number => node?.height || 0;
 
-export const insertBST = (root: TreeState | null, value: number): TreeState => {
-  const id = Math.random().toString(36).substr(2, 9);
-  if (!root) return { id, value, left: null, right: null, height: 1 };
+const createNode = (value: number | string, color?: 'red' | 'black'): TreeState => ({
+  id: Math.random().toString(36).substr(2, 9),
+  value,
+  left: null,
+  right: null,
+  height: 1,
+  color
+});
 
+export const insertBST = (root: TreeState | null, value: number): TreeState => {
+  if (!root) return createNode(value);
+
+  const newNode = { ...root };
   if (value < (root.value as number)) {
-    root.left = insertBST(root.left || null, value);
+    newNode.left = insertBST(root.left || null, value);
   } else {
-    root.right = insertBST(root.right || null, value);
+    newNode.right = insertBST(root.right || null, value);
   }
 
-  root.height = 1 + Math.max(getHeight(root.left || null), getHeight(root.right || null));
-  return root;
+  newNode.height = 1 + Math.max(getHeight(newNode.left || null), getHeight(newNode.right || null));
+  return newNode;
 };
 
 export const insertAVL = (root: TreeState | null, value: number): TreeState => {
-    const id = Math.random().toString(36).substr(2, 9);
-    if (!root) return { id, value, left: null, right: null, height: 1 };
+    if (!root) return createNode(value);
 
+    const newNode = { ...root };
     if (value < (root.value as number)) {
-        root.left = insertAVL(root.left || null, value);
+        newNode.left = insertAVL(root.left || null, value);
     } else if (value > (root.value as number)) {
-        root.right = insertAVL(root.right || null, value);
+        newNode.right = insertAVL(root.right || null, value);
     } else {
         return root;
     }
 
-    root.height = 1 + Math.max(getHeight(root.left || null), getHeight(root.right || null));
-    const balance = getBalance(root);
+    newNode.height = 1 + Math.max(getHeight(newNode.left || null), getHeight(newNode.right || null));
+    const balance = getBalance(newNode);
 
-    if (balance > 1 && value < ((root.left?.value as number) || 0)) return rightRotate(root);
-    if (balance < -1 && value > ((root.right?.value as number) || 0)) return leftRotate(root);
-    if (balance > 1 && value > ((root.left?.value as number) || 0)) {
-        root.left = leftRotate(root.left!);
-        return rightRotate(root);
+    if (balance > 1 && value < ((newNode.left?.value as number) || 0)) return rightRotate(newNode);
+    if (balance < -1 && value > ((newNode.right?.value as number) || 0)) return leftRotate(newNode);
+    if (balance > 1 && value > ((newNode.left?.value as number) || 0)) {
+        newNode.left = leftRotate(newNode.left!);
+        return rightRotate(newNode);
     }
-    if (balance < -1 && value < ((root.right?.value as number) || 0)) {
-        root.right = rightRotate(root.right!);
-        return leftRotate(root);
+    if (balance < -1 && value < ((newNode.right?.value as number) || 0)) {
+        newNode.right = rightRotate(newNode.right!);
+        return leftRotate(newNode);
     }
 
-    return root;
+    return newNode;
 };
 
 export const insertRBT = (root: TreeState | null, value: number): TreeState => {
-    // Standard BST Insert
+    const rootClone = root ? JSON.parse(JSON.stringify(root)) : null;
+
     const newNode: TreeState = {
         id: Math.random().toString(36).substr(2, 9),
         value,
@@ -55,7 +65,7 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
         color: 'red'
     };
 
-    if (!root) {
+    if (!rootClone) {
         newNode.color = 'black';
         return newNode;
     }
@@ -79,11 +89,11 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
         return node;
     };
 
-    insert(root, value);
+    let newRoot = insert(rootClone, value);
 
     // Fix RBT Properties
     let curr = newNode;
-    while (curr !== root && curr.parent?.color === 'red') {
+    while (curr !== newRoot && curr.parent?.color === 'red') {
         if (curr.parent === curr.parent.parent?.left) {
             const uncle = curr.parent.parent.right;
             if (uncle?.color === 'red') {
@@ -94,11 +104,11 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
             } else {
                 if (curr === curr.parent.right) {
                     curr = curr.parent;
-                    root = leftRotateRBT(root, curr);
+                    newRoot = leftRotateRBT(newRoot, curr);
                 }
                 curr.parent!.color = 'black';
                 curr.parent!.parent!.color = 'red';
-                root = rightRotateRBT(root, curr.parent!.parent!);
+                newRoot = rightRotateRBT(newRoot, curr.parent!.parent!);
             }
         } else {
             const uncle = curr.parent!.parent!.left;
@@ -110,16 +120,24 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
             } else {
                 if (curr === curr.parent!.left) {
                     curr = curr.parent!;
-                    root = rightRotateRBT(root, curr);
+                    newRoot = rightRotateRBT(newRoot, curr);
                 }
                 curr.parent!.color = 'black';
                 curr.parent!.parent!.color = 'red';
-                root = leftRotateRBT(root, curr.parent!.parent!);
+                newRoot = leftRotateRBT(newRoot, curr.parent!.parent!);
             }
         }
     }
-    root.color = 'black';
-    return root;
+    newRoot.color = 'black';
+    // Remove parents before returning to avoid circular structures in state
+    const removeParents = (node: TreeState | null) => {
+        if (!node) return;
+        delete node.parent;
+        removeParents(node.left || null);
+        removeParents(node.right || null);
+    };
+    removeParents(newRoot);
+    return newRoot;
 };
 
 const leftRotateRBT = (root: TreeState, x: TreeState): TreeState => {
@@ -153,28 +171,28 @@ const getBalance = (node: TreeState | null): number => {
 };
 
 const rightRotate = (y: TreeState): TreeState => {
-    const x = y.left!;
+    const x = { ...y.left! };
     const T2 = x.right;
-    x.right = y;
-    y.left = T2;
-    y.height = Math.max(getHeight(y.left || null), getHeight(y.right || null)) + 1;
+    const newY = { ...y, left: T2 };
+    x.right = newY;
+    newY.height = Math.max(getHeight(newY.left || null), getHeight(newY.right || null)) + 1;
     x.height = Math.max(getHeight(x.left || null), getHeight(x.right || null)) + 1;
     return x;
 };
 
 const leftRotate = (x: TreeState): TreeState => {
-    const y = x.right!;
+    const y = { ...x.right! };
     const T2 = y.left;
-    y.left = x;
-    x.right = T2;
-    x.height = Math.max(getHeight(x.left || null), getHeight(x.right || null)) + 1;
+    const newX = { ...x, right: T2 };
+    y.left = newX;
+    newX.height = Math.max(getHeight(newX.left || null), getHeight(newX.right || null)) + 1;
     y.height = Math.max(getHeight(y.left || null), getHeight(y.right || null)) + 1;
     return y;
 };
 
 export const insertTrie = (root: TreeState | null, word: string): TreeState => {
-    if (!root) root = { id: 'root', value: '', isEndOfWord: false, children: {} };
-    let curr = root;
+    const newRoot = root ? JSON.parse(JSON.stringify(root)) : { id: 'root', value: '', isEndOfWord: false, children: {} };
+    let curr = newRoot;
     for (const char of word) {
         if (!curr.children) curr.children = {};
         if (!curr.children[char]) {
@@ -183,5 +201,5 @@ export const insertTrie = (root: TreeState | null, word: string): TreeState => {
         curr = curr.children[char];
     }
     curr.isEndOfWord = true;
-    return root;
+    return newRoot;
 };

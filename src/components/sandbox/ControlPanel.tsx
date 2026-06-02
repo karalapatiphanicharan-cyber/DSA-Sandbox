@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useSandboxStore } from '@/store/sandboxStore';
 import { STRUCTURES } from '@/data/structures';
-import { StructureType, TreeState, ListState } from '@/types/structures';
+import { StructureType, TreeState, ListState, StackItem } from '@/types/structures';
 import {
   Plus, Minus, Trash2, Shuffle,
   ArrowRightLeft, Settings2, PlayCircle, Dices
@@ -93,6 +93,9 @@ export const ControlPanel: React.FC = () => {
         if (currentStructure === 'DOUBLY_LINKED_LIST') {
           newNode.prev = curr;
         }
+        if (currentStructure === 'CIRCULAR_LINKED_LIST') {
+          newNode.next = newList;
+        }
       }
       setListData(newList);
       addToHistory({ data, treeData, listData: newList, currentStructure });
@@ -110,6 +113,12 @@ export const ControlPanel: React.FC = () => {
     };
 
     const newData = [...data, newItem];
+
+    // Specialized Logic for Circular Queue and Priority Queue
+    if (currentStructure === 'PRIORITY_QUEUE') {
+      newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    }
+
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
     setInputValue('');
@@ -124,20 +133,28 @@ export const ControlPanel: React.FC = () => {
     if (currentCategory === 'LINKED_LISTS') {
       if (!listData) return;
       let newList: ListState | null;
-      if (!listData.next) {
+      if (!listData.next || (currentStructure === 'CIRCULAR_LINKED_LIST' && listData.next === listData)) {
         newList = null;
       } else {
         newList = JSON.parse(JSON.stringify(listData)) as ListState;
         let curr = newList;
-        while (curr.next && curr.next.next) curr = curr.next;
-        curr.next = null;
+        while (curr.next && curr.next.next && (currentStructure !== 'CIRCULAR_LINKED_LIST' || curr.next.next !== newList)) curr = curr.next;
+        curr.next = currentStructure === 'CIRCULAR_LINKED_LIST' ? newList : null;
       }
       setListData(newList);
       addToHistory({ data, treeData, listData: newList, currentStructure });
       return;
     }
     if (data.length === 0) return;
-    const newData = data.slice(0, -1);
+
+    let newData;
+    if (currentStructure === 'STACK') {
+      newData = data.slice(0, -1);
+    } else {
+      // Queue, Circular Queue, Priority Queue (FIFO/Priority based)
+      newData = data.slice(1);
+    }
+
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
   };
@@ -152,6 +169,8 @@ export const ControlPanel: React.FC = () => {
       vals.forEach(v => {
         if (currentStructure === 'AVL_TREE') {
           newTree = insertAVL(newTree, v);
+        } else if (currentStructure === 'RED_BLACK_TREE') {
+          newTree = insertRBT(newTree, v);
         } else {
           newTree = insertBST(newTree, v);
         }
@@ -175,6 +194,9 @@ export const ControlPanel: React.FC = () => {
           curr = newNode;
         }
       });
+      if (currentStructure === 'CIRCULAR_LINKED_LIST' && curr && head) {
+        (curr as ListState).next = head;
+      }
       setListData(head);
       addToHistory({ data, treeData, listData: head, currentStructure });
       return;
@@ -186,6 +208,11 @@ export const ControlPanel: React.FC = () => {
       priority: Math.floor(Math.random() * 10) + 1,
       index: i
     }));
+
+    if (currentStructure === 'PRIORITY_QUEUE') {
+      newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    }
+
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
   };
@@ -200,6 +227,29 @@ export const ControlPanel: React.FC = () => {
   const handleReverse = () => {
     if (currentCategory === 'LINKED_LISTS') {
       if (!listData) return;
+      if (currentStructure === 'CIRCULAR_LINKED_LIST') {
+        // Simplified reverse for circular
+        const vals: (string | number)[] = [];
+        let cur: ListState | null = listData;
+        do {
+          vals.push(cur!.value);
+          cur = cur!.next;
+        } while (cur !== listData);
+        vals.reverse();
+
+        let head: ListState | null = null;
+        let c: ListState | null = null;
+        vals.forEach(v => {
+          const newNode: ListState = { id: generateId(), value: v, next: null, prev: null };
+          if (!head) { head = newNode; c = head; }
+          else if (c) { c.next = newNode; c = newNode; }
+        });
+        if (c && head) (c as ListState).next = head;
+        setListData(head);
+        addToHistory({ data, treeData, listData: head, currentStructure });
+        return;
+      }
+
       let prev: ListState | null = null;
       let curr: ListState | null = JSON.parse(JSON.stringify(listData)) as ListState;
       let next: ListState | null = null;
@@ -217,7 +267,7 @@ export const ControlPanel: React.FC = () => {
       return;
     }
     const reversed = [...data].reverse();
-    const newData = reversed.map((item, i) => ({ ...item, index: i }));
+    const newData = reversed.map((item: StackItem, i: number) => ({ ...item, index: i }));
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
   };
@@ -239,12 +289,14 @@ export const ControlPanel: React.FC = () => {
           <Label className="text-xs font-bold text-slate-500">Data Structure</Label>
           <Select
             value={currentStructure}
-              onValueChange={(val: string | null) => val && setStructure(val as StructureType, STRUCTURES[val as StructureType].category)}
+              onValueChange={(val: string | null) => {
+                if (val) setStructure(val as StructureType, STRUCTURES[val as StructureType].category);
+              }}
           >
-            <SelectTrigger className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <SelectTrigger className="h-12 w-full rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm px-4">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[100] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
               {Object.values(STRUCTURES).map((s) => (
                 <SelectItem key={s.id} value={s.id} className="font-medium">{s.name}</SelectItem>
               ))}
@@ -263,7 +315,7 @@ export const ControlPanel: React.FC = () => {
             max="20"
             value={maxSize}
             onChange={(e) => setMaxSize(Number(e.target.value))}
-            className="h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
           />
         </div>
       </div>
@@ -303,7 +355,7 @@ export const ControlPanel: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Button onClick={handleAdd} className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 dark:shadow-none font-bold">
+            <Button onClick={handleAdd} className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 dark:shadow-none font-bold text-white">
               <Plus size={18} className="mr-2" />
               {currentStructure === 'STACK' ? 'Push' :
                currentCategory === 'QUEUES' ? 'Enqueue' :
