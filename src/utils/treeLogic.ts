@@ -129,7 +129,6 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
         }
     }
     newRoot.color = 'black';
-    // Remove parents before returning to avoid circular structures in state
     const removeParents = (node: TreeState | null) => {
         if (!node) return;
         delete node.parent;
@@ -183,9 +182,9 @@ const rightRotate = (y: TreeState): TreeState => {
 const leftRotate = (x: TreeState): TreeState => {
     const y = { ...x.right! };
     const T2 = y.left;
-    const newX = { ...x, right: T2 };
-    y.left = newX;
-    newX.height = Math.max(getHeight(newX.left || null), getHeight(newX.right || null)) + 1;
+    y.left = x;
+    x.right = T2;
+    x.height = Math.max(getHeight(x.left || null), getHeight(x.right || null)) + 1;
     y.height = Math.max(getHeight(y.left || null), getHeight(y.right || null)) + 1;
     return y;
 };
@@ -202,4 +201,28 @@ export const insertTrie = (root: TreeState | null, word: string): TreeState => {
     }
     curr.isEndOfWord = true;
     return newRoot;
+};
+
+export const insertHeap = (root: TreeState | null, value: number): TreeState => {
+    const nodes: TreeState[] = [];
+    const traverse = (node: TreeState | null) => {
+        if (!node) return;
+        nodes.push(node);
+        traverse(node.left || null);
+        traverse(node.right || null);
+    };
+    traverse(root);
+
+    const allValues = [...nodes.map(n => n.value as number), value];
+    allValues.sort((a, b) => b - a); // Max Heap
+
+    const buildComplete = (index: number): TreeState | null => {
+        if (index >= allValues.length) return null;
+        const node = createNode(allValues[index]);
+        node.left = buildComplete(2 * index + 1);
+        node.right = buildComplete(2 * index + 2);
+        return node;
+    };
+
+    return buildComplete(0)!;
 };

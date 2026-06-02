@@ -3,9 +3,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSandboxStore } from '@/store/sandboxStore';
+import { StackItem } from '@/types/structures';
 
-export const CircularQueueVisualizer: React.FC = () => {
-  const { data, maxSize } = useSandboxStore();
+export const CircularQueueVisualizer: React.FC<{ data?: StackItem[], maxSize?: number }> = ({ data: propsData, maxSize: propsMaxSize }) => {
+  const { data: storeData, maxSize: storeMaxSize } = useSandboxStore();
+  const data = propsData || storeData;
+  const maxSize = propsMaxSize || storeMaxSize;
   const radius = 120;
 
   return (

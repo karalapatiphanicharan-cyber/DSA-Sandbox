@@ -3,9 +3,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSandboxStore } from '@/store/sandboxStore';
+import { StackItem } from '@/types/structures';
 
-export const StackVisualizer: React.FC = () => {
-  const { data, maxSize } = useSandboxStore();
+export const StackVisualizer: React.FC<{ data?: StackItem[], maxSize?: number }> = ({ data: propsData, maxSize: propsMaxSize }) => {
+  const { data: storeData, maxSize: storeMaxSize } = useSandboxStore();
+  const data = propsData || storeData;
+  const maxSize = propsMaxSize || storeMaxSize;
 
   return (
     <div className="relative h-full w-full flex flex-col-reverse items-center justify-start p-12 overflow-y-auto bg-[var(--color-slate-50)] dark:bg-slate-950/50">

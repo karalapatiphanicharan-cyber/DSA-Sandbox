@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import { useSandboxStore } from '@/store/sandboxStore';
 import { STRUCTURES } from '@/data/structures';
-import { StructureType, TreeState, ListState, StackItem } from '@/types/structures';
+import { StructureType, TreeState, ListState } from '@/types/structures';
 import {
-  Plus, Minus, Trash2, Shuffle,
-  ArrowRightLeft, Settings2, PlayCircle, Dices
+  Plus, Minus, Trash2,
+  Settings2, PlayCircle, Dices,
+  ArrowUp, ArrowDown, MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,8 +21,9 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { generateId, generateRandomArray } from '@/utils/generators';
-import { insertBST, insertAVL, insertTrie, insertRBT } from '@/utils/treeLogic';
+import { insertBST, insertAVL, insertTrie, insertRBT, insertHeap } from '@/utils/treeLogic';
 import { useHistoryStore } from '@/store/historyStore';
+import { toast } from 'sonner';
 
 export const ControlPanel: React.FC = () => {
   const addToHistory = useHistoryStore(state => state.addToHistory);
@@ -37,126 +39,220 @@ export const ControlPanel: React.FC = () => {
     setListData,
     maxSize,
     setMaxSize,
-    reset
   } = useSandboxStore();
 
   const [inputValue, setInputValue] = useState('');
   const [priorityValue, setPriorityValue] = useState('1');
+  const [positionValue, setPositionValue] = useState('0');
 
-  const handleAdd = () => {
-    if (!inputValue) return;
+  const getListLength = (head: ListState | null): number => {
+    if (!head) return 0;
+    let count = 0;
+    let curr: ListState | null = head;
+    const visited = new Set();
+    while (curr && !visited.has(curr.id)) {
+      count++;
+      visited.add(curr.id);
+      curr = curr.next;
+    }
+    return count;
+  };
+
+  const handleAdd = (location: 'default' | 'head' | 'tail' | 'position' = 'default') => {
+    if (!inputValue && currentStructure !== 'TRIE') {
+      toast.warning("Please enter a value.");
+      return;
+    }
 
     const numValue = Number(inputValue);
     const value = isNaN(numValue) ? inputValue : numValue;
 
     if (currentCategory === 'TREES') {
       if (currentStructure === 'TRIE') {
-        const newTrie = insertTrie(treeData ? { ...treeData } : null, inputValue);
+        if (!inputValue) { toast.warning("Enter a word for Trie"); return; }
+        const newTrie = insertTrie(treeData ? JSON.parse(JSON.stringify(treeData)) : null, inputValue);
         setTreeData(newTrie);
         addToHistory({ data, treeData: newTrie, listData, currentStructure });
         setInputValue('');
+        toast.success(`Word "${inputValue}" inserted.`);
         return;
       }
 
-      let newTree: TreeState | null = null;
-      if (currentStructure === 'BINARY_SEARCH_TREE' || currentStructure === 'BINARY_TREE') {
-        newTree = insertBST(treeData ? { ...treeData } : null, numValue || 0);
-      } else if (currentStructure === 'AVL_TREE') {
-        newTree = insertAVL(treeData ? { ...treeData } : null, numValue || 0);
-      } else if (currentStructure === 'RED_BLACK_TREE') {
-        newTree = insertRBT(treeData ? { ...treeData } : null, numValue || 0);
-      } else {
-        newTree = insertBST(treeData ? { ...treeData } : null, numValue || 0);
+      if (currentStructure === 'HEAP') {
+          const newHeap = insertHeap(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue || 0);
+          setTreeData(newHeap);
+          addToHistory({ data, treeData: newHeap, listData, currentStructure });
+          setInputValue('');
+          toast.success(`Value ${numValue} added to Heap.`);
+          return;
       }
+
+      let newTree: TreeState | null = null;
+      const exists = (node: TreeState | null, val: number): boolean => {
+        if (!node) return false;
+        if (node.value === val) return true;
+        return val < (node.value as number) ? exists(node.left || null, val) : exists(node.right || null, val);
+      };
+
+      if (exists(treeData, numValue)) {
+        toast.warning(`Duplicate value ${numValue} ignored.`);
+        return;
+      }
+
+      if (currentStructure === 'AVL_TREE') newTree = insertAVL(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
+      else if (currentStructure === 'RED_BLACK_TREE') newTree = insertRBT(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
+      else newTree = insertBST(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
+
       setTreeData(newTree);
       addToHistory({ data, treeData: newTree, listData, currentStructure });
       setInputValue('');
+      toast.success(`Inserted ${numValue}.`);
       return;
     }
 
     if (currentCategory === 'LINKED_LISTS') {
-      const newNode: ListState = {
-        id: generateId(),
-        value: value,
-        next: null,
-        prev: null
-      };
+      const currentLen = getListLength(listData);
+      if (currentLen >= maxSize) {
+        toast.error("List Overflow: Max size reached.");
+        return;
+      }
 
-      let newList: ListState | null;
-      if (!listData) {
+      const newNode: ListState = { id: generateId(), value, next: null, prev: null };
+      let newList = listData ? JSON.parse(JSON.stringify(listData)) as ListState : null;
+
+      if (!newList) {
         newList = newNode;
+        if (currentStructure === 'CIRCULAR_LINKED_LIST') newNode.next = newNode;
       } else {
-        newList = JSON.parse(JSON.stringify(listData)) as ListState;
-        let curr = newList;
-        while (curr.next) curr = curr.next;
-        curr.next = newNode;
-        if (currentStructure === 'DOUBLY_LINKED_LIST') {
-          newNode.prev = curr;
-        }
-        if (currentStructure === 'CIRCULAR_LINKED_LIST') {
-          newNode.next = newList;
+        if (location === 'head') {
+          if (currentStructure === 'CIRCULAR_LINKED_LIST') {
+            let tail = newList;
+            while (tail.next !== newList) tail = tail.next!;
+            newNode.next = newList;
+            tail.next = newNode;
+          } else {
+            newNode.next = newList;
+            if (currentStructure === 'DOUBLY_LINKED_LIST') newList.prev = newNode;
+          }
+          newList = newNode;
+        } else if (location === 'position') {
+          const pos = Math.max(0, Math.min(currentLen, Number(positionValue)));
+          if (pos === 0) {
+              if (currentStructure === 'CIRCULAR_LINKED_LIST') {
+                  let tail = newList;
+                  while (tail.next !== newList) tail = tail.next!;
+                  newNode.next = newList;
+                  tail.next = newNode;
+              } else {
+                  newNode.next = newList;
+                  if (currentStructure === 'DOUBLY_LINKED_LIST') newList.prev = newNode;
+              }
+              newList = newNode;
+          } else {
+              let curr = newList;
+              for (let i = 0; i < pos - 1; i++) if (curr.next) curr = curr.next;
+              newNode.next = curr.next;
+              curr.next = newNode;
+              if (currentStructure === 'DOUBLY_LINKED_LIST') {
+                  newNode.prev = curr;
+                  if (newNode.next && newNode.next !== newList) newNode.next.prev = newNode;
+              }
+          }
+        } else {
+          let curr = newList;
+          while (curr.next && (currentStructure !== 'CIRCULAR_LINKED_LIST' || curr.next !== newList)) {
+              curr = curr.next;
+          }
+          curr.next = newNode;
+          if (currentStructure === 'DOUBLY_LINKED_LIST') newNode.prev = curr;
+          if (currentStructure === 'CIRCULAR_LINKED_LIST') newNode.next = newList;
         }
       }
       setListData(newList);
       addToHistory({ data, treeData, listData: newList, currentStructure });
       setInputValue('');
+      toast.success(`Node ${value} added.`);
       return;
     }
 
-    if (data.length >= maxSize) return;
+    if (data.length >= maxSize) {
+      toast.error(`${currentStructure} Overflow: Max size reached.`);
+      return;
+    }
 
-    const newItem = {
-      id: generateId(),
-      value: value,
-      priority: Number(priorityValue),
-      index: data.length
-    };
+    const newItem = { id: generateId(), value, priority: Number(priorityValue), index: data.length };
+    let newData = [...data, newItem];
 
-    const newData = [...data, newItem];
-
-    // Specialized Logic for Circular Queue and Priority Queue
     if (currentStructure === 'PRIORITY_QUEUE') {
       newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    }
+    if (currentStructure === 'DEQUE' && location === 'head') {
+        newData = [newItem, ...data].map((it, i) => ({ ...it, index: i }));
     }
 
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
     setInputValue('');
+    toast.success("Added successfully.");
   };
 
-  const handlePop = () => {
+  const handlePop = (location: 'default' | 'head' | 'tail' = 'default') => {
     if (currentCategory === 'TREES') {
+      if (!treeData) { toast.error("Tree Underflow."); return; }
       setTreeData(null);
       addToHistory({ data, treeData: null, listData, currentStructure });
+      toast.success("Tree cleared.");
       return;
     }
+
     if (currentCategory === 'LINKED_LISTS') {
-      if (!listData) return;
-      let newList: ListState | null;
-      if (!listData.next || (currentStructure === 'CIRCULAR_LINKED_LIST' && listData.next === listData)) {
-        newList = null;
+      if (!listData) { toast.error("List Underflow."); return; }
+      let newList = JSON.parse(JSON.stringify(listData)) as ListState;
+
+      if (!newList.next || (currentStructure === 'CIRCULAR_LINKED_LIST' && newList.next === newList)) {
+          newList = null as unknown as ListState;
+      } else if (location === 'head') {
+          if (currentStructure === 'CIRCULAR_LINKED_LIST') {
+              let tail = newList;
+              while (tail.next !== newList) tail = tail.next!;
+              newList = newList.next!;
+              tail.next = newList;
+          } else {
+              newList = newList.next!;
+              if (currentStructure === 'DOUBLY_LINKED_LIST') newList.prev = null;
+          }
       } else {
-        newList = JSON.parse(JSON.stringify(listData)) as ListState;
-        let curr = newList;
-        while (curr.next && curr.next.next && (currentStructure !== 'CIRCULAR_LINKED_LIST' || curr.next.next !== newList)) curr = curr.next;
-        curr.next = currentStructure === 'CIRCULAR_LINKED_LIST' ? newList : null;
+          let curr = newList;
+          let prev = null;
+          while (curr.next && (currentStructure !== 'CIRCULAR_LINKED_LIST' || curr.next !== newList)) {
+              prev = curr;
+              curr = curr.next;
+          }
+          if (prev) prev.next = currentStructure === 'CIRCULAR_LINKED_LIST' ? newList : null;
+          else newList = null as unknown as ListState;
       }
+
       setListData(newList);
       addToHistory({ data, treeData, listData: newList, currentStructure });
+      toast.success("Removed node.");
       return;
     }
-    if (data.length === 0) return;
+
+    if (data.length === 0) {
+      toast.error(`${currentStructure} Underflow.`);
+      return;
+    }
 
     let newData;
-    if (currentStructure === 'STACK') {
+    if (currentStructure === 'STACK' || (currentStructure === 'DEQUE' && location === 'tail')) {
       newData = data.slice(0, -1);
     } else {
-      // Queue, Circular Queue, Priority Queue (FIFO/Priority based)
       newData = data.slice(1);
     }
 
     setData(newData);
     addToHistory({ data: newData, treeData, listData, currentStructure });
+    toast.success("Removed successfully.");
   };
 
   const handleGenerate = (type: 'random' | 'sorted' | 'reverse-sorted') => {
@@ -165,227 +261,144 @@ export const ControlPanel: React.FC = () => {
     if (type === 'reverse-sorted') vals.sort((a, b) => b - a);
 
     if (currentCategory === 'TREES') {
-      let newTree: TreeState | null = null;
-      vals.forEach(v => {
-        if (currentStructure === 'AVL_TREE') {
-          newTree = insertAVL(newTree, v);
-        } else if (currentStructure === 'RED_BLACK_TREE') {
-          newTree = insertRBT(newTree, v);
-        } else {
-          newTree = insertBST(newTree, v);
-        }
+      let root: TreeState | null = null;
+      Array.from(new Set(vals)).forEach(v => {
+          if (currentStructure === 'AVL_TREE') root = insertAVL(root, v);
+          else if (currentStructure === 'RED_BLACK_TREE') root = insertRBT(root, v);
+          else if (currentStructure === 'HEAP') root = insertHeap(root, v);
+          else root = insertBST(root, v);
       });
-      setTreeData(newTree);
-      addToHistory({ data, treeData: newTree, listData, currentStructure });
-      return;
-    }
-
-    if (currentCategory === 'LINKED_LISTS') {
-      let head: ListState | null = null;
-      let curr: ListState | null = null;
-      vals.forEach(v => {
-        const newNode: ListState = { id: generateId(), value: v, next: null, prev: null };
-        if (!head) {
-          head = newNode;
-          curr = head;
-        } else if (curr) {
-          curr.next = newNode;
-          if (currentStructure === 'DOUBLY_LINKED_LIST') newNode.prev = curr;
-          curr = newNode;
-        }
+      setTreeData(root);
+      addToHistory({ data, treeData: root, listData, currentStructure });
+    } else if (currentCategory === 'LINKED_LISTS') {
+      const nodes: ListState[] = vals.map(v => ({ id: generateId(), value: v, next: null, prev: null }));
+      nodes.forEach((node, i) => {
+          if (i < nodes.length - 1) {
+              node.next = nodes[i + 1];
+              if (currentStructure === 'DOUBLY_LINKED_LIST') nodes[i + 1].prev = node;
+          }
       });
-      if (currentStructure === 'CIRCULAR_LINKED_LIST' && curr && head) {
-        (curr as ListState).next = head;
+      if (currentStructure === 'CIRCULAR_LINKED_LIST' && nodes.length > 0) {
+          nodes[nodes.length - 1].next = nodes[0];
       }
-      setListData(head);
-      addToHistory({ data, treeData, listData: head, currentStructure });
-      return;
+      const finalHead = nodes.length > 0 ? nodes[0] : null;
+      setListData(finalHead);
+      addToHistory({ data, treeData, listData: finalHead, currentStructure });
+    } else {
+      const newData = vals.map((v, i) => ({ id: generateId(), value: v, priority: Math.floor(Math.random() * 10) + 1, index: i }));
+      if (currentStructure === 'PRIORITY_QUEUE') newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      setData(newData);
+      addToHistory({ data: newData, treeData, listData, currentStructure });
     }
-
-    const newData = vals.map((v, i) => ({
-      id: generateId(),
-      value: v,
-      priority: Math.floor(Math.random() * 10) + 1,
-      index: i
-    }));
-
-    if (currentStructure === 'PRIORITY_QUEUE') {
-      newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
-    }
-
-    setData(newData);
-    addToHistory({ data: newData, treeData, listData, currentStructure });
-  };
-
-  const handleShuffle = () => {
-    const shuffled = [...data].sort(() => Math.random() - 0.5);
-    const newData = shuffled.map((item, i) => ({ ...item, index: i }));
-    setData(newData);
-    addToHistory({ data: newData, treeData, listData, currentStructure });
-  };
-
-  const handleReverse = () => {
-    if (currentCategory === 'LINKED_LISTS') {
-      if (!listData) return;
-      if (currentStructure === 'CIRCULAR_LINKED_LIST') {
-        // Simplified reverse for circular
-        const vals: (string | number)[] = [];
-        let cur: ListState | null = listData;
-        do {
-          vals.push(cur!.value);
-          cur = cur!.next;
-        } while (cur !== listData);
-        vals.reverse();
-
-        let head: ListState | null = null;
-        let c: ListState | null = null;
-        vals.forEach(v => {
-          const newNode: ListState = { id: generateId(), value: v, next: null, prev: null };
-          if (!head) { head = newNode; c = head; }
-          else if (c) { c.next = newNode; c = newNode; }
-        });
-        if (c && head) (c as ListState).next = head;
-        setListData(head);
-        addToHistory({ data, treeData, listData: head, currentStructure });
-        return;
-      }
-
-      let prev: ListState | null = null;
-      let curr: ListState | null = JSON.parse(JSON.stringify(listData)) as ListState;
-      let next: ListState | null = null;
-      while (curr) {
-        next = curr.next;
-        curr.next = prev;
-        if (currentStructure === 'DOUBLY_LINKED_LIST') {
-          curr.prev = next;
-        }
-        prev = curr;
-        curr = next;
-      }
-      setListData(prev);
-      addToHistory({ data, treeData, listData: prev, currentStructure });
-      return;
-    }
-    const reversed = [...data].reverse();
-    const newData = reversed.map((item: StackItem, i: number) => ({ ...item, index: i }));
-    setData(newData);
-    addToHistory({ data: newData, treeData, listData, currentStructure });
+    toast.success(`Generated ${type} data.`);
   };
 
   const handleClear = () => {
-    reset();
+    useSandboxStore.getState().reset();
     addToHistory({ data: [], treeData: null, listData: null, currentStructure });
+    toast.info("Sandbox reset.");
   };
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="space-y-6">
+    <div className="p-6 space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center space-x-2 text-slate-400">
-          <Settings2 size={16} />
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Configuration</h2>
+          <Settings2 size={14} />
+          <h2 className="text-[10px] font-black uppercase tracking-widest">Configuration</h2>
         </div>
 
-        <div className="space-y-3">
-          <Label className="text-xs font-bold text-slate-500">Data Structure</Label>
+        <div className="space-y-2">
+          <Label className="text-[11px] font-bold text-slate-500 uppercase">Data Structure</Label>
           <Select
             value={currentStructure}
               onValueChange={(val: string | null) => {
                 if (val) setStructure(val as StructureType, STRUCTURES[val as StructureType].category);
               }}
           >
-            <SelectTrigger className="h-12 w-full rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm px-4">
+            <SelectTrigger className="h-10 w-full rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm px-4 focus:ring-2 focus:ring-indigo-500/20">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="z-[100] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <SelectContent className="z-[1000] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xl">
               {Object.values(STRUCTURES).map((s) => (
-                <SelectItem key={s.id} value={s.id} className="font-medium">{s.name}</SelectItem>
+                <SelectItem key={s.id} value={s.id} className="text-xs py-2.5 font-medium focus:bg-indigo-50 dark:focus:bg-indigo-900/20">{s.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <Label className="text-xs font-bold text-slate-500">Max Size</Label>
-            <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-indigo-600 font-bold">{maxSize}</span>
+            <Label className="text-[11px] font-bold text-slate-500 uppercase">Capacity</Label>
+            <span className="text-[10px] font-mono bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded text-indigo-600 font-bold border border-indigo-100 dark:border-indigo-800">{maxSize}</span>
           </div>
-          <Input
-            type="range"
-            min="5"
-            max="20"
-            value={maxSize}
-            onChange={(e) => setMaxSize(Number(e.target.value))}
-            className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-          />
+          <Input type="range" min="5" max="30" value={maxSize} onChange={(e) => setMaxSize(Number(e.target.value))} className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer accent-indigo-600" />
         </div>
       </div>
 
-      <Separator className="opacity-50" />
+      <Separator className="opacity-40" />
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="flex items-center space-x-2 text-slate-400">
-          <PlayCircle size={16} />
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Operations</h2>
+          <PlayCircle size={14} />
+          <h2 className="text-[10px] font-black uppercase tracking-widest">Operations</h2>
         </div>
 
         <div className="space-y-4">
           <div className="flex space-x-2">
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-[10px] font-bold text-slate-400 ml-1">Value</Label>
-              <Input
-                placeholder="Enter value..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-                className="h-11 rounded-xl border-slate-200 dark:border-slate-800"
-              />
+            <div className="flex-1 space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Value</Label>
+              <Input placeholder="Enter value..." value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAdd()} className="h-10 rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs" />
             </div>
             {currentStructure === 'PRIORITY_QUEUE' && (
-              <div className="w-20 space-y-1.5">
-                <Label className="text-[10px] font-bold text-slate-400 ml-1">Pri</Label>
-                <Input
-                  type="number"
-                  placeholder="1"
-                  value={priorityValue}
-                  onChange={(e) => setPriorityValue(e.target.value)}
-                  className="h-11 rounded-xl border-slate-200 dark:border-slate-800"
-                />
+              <div className="w-16 space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Pri</Label>
+                <Input type="number" value={priorityValue} onChange={(e) => setPriorityValue(e.target.value)} className="h-10 rounded-xl text-xs" />
+              </div>
+            )}
+            {currentCategory === 'LINKED_LISTS' && (
+              <div className="w-16 space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 ml-1 uppercase">Pos</Label>
+                <Input type="number" value={positionValue} onChange={(e) => setPositionValue(e.target.value)} className="h-10 rounded-xl text-xs" />
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button onClick={handleAdd} className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 dark:shadow-none font-bold text-white">
-              <Plus size={18} className="mr-2" />
-              {currentStructure === 'STACK' ? 'Push' :
-               currentCategory === 'QUEUES' ? 'Enqueue' :
-               currentCategory === 'LINKED_LISTS' ? 'Insert' : 'Add'}
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => handleAdd(currentStructure === 'DEQUE' ? 'head' : 'default')} className="h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs">
+              <Plus size={14} className="mr-1.5" />
+              {currentStructure === 'STACK' ? 'Push' : currentCategory === 'QUEUES' ? 'Enqueue' : 'Add'}
             </Button>
-
-            <Button variant="outline" onClick={handlePop} disabled={data.length === 0 && !treeData && !listData} className="h-11 rounded-xl border-slate-200 dark:border-slate-800 font-bold">
-              <Minus size={18} className="mr-2" />
-              {currentStructure === 'STACK' ? 'Pop' :
-               currentCategory === 'QUEUES' ? 'Dequeue' :
-               currentCategory === 'LINKED_LISTS' ? 'Delete' : 'Remove'}
+            <Button variant="outline" onClick={() => handlePop()} className="h-10 rounded-xl border-slate-200 font-bold text-xs">
+              <Minus size={14} className="mr-1.5" />
+              {currentStructure === 'STACK' ? 'Pop' : currentCategory === 'QUEUES' ? 'Dequeue' : 'Remove'}
             </Button>
           </div>
+
+          {currentCategory === 'LINKED_LISTS' && (
+              <div className="grid grid-cols-3 gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleAdd('head')} className="h-9 text-[10px] font-bold rounded-lg"><ArrowUp size={12} className="mr-1"/> Head</Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleAdd('tail')} className="h-9 text-[10px] font-bold rounded-lg"><ArrowDown size={12} className="mr-1"/> Tail</Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleAdd('position')} className="h-9 text-[10px] font-bold rounded-lg"><MapPin size={12} className="mr-1"/> Pos</Button>
+              </div>
+          )}
+
+          {currentStructure === 'DEQUE' && (
+              <div className="grid grid-cols-2 gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => handleAdd('tail')} className="h-9 text-[10px] font-bold rounded-lg">Push Rear</Button>
+                  <Button variant="secondary" size="sm" onClick={() => handlePop('tail')} className="h-9 text-[10px] font-bold rounded-lg">Pop Rear</Button>
+              </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <Button variant="secondary" size="sm" onClick={handleShuffle} className="h-10 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-all">
-            <Shuffle size={14} className="mr-2" /> Shuffle
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <Button variant="secondary" size="sm" onClick={() => handleGenerate('random')} className="h-9 rounded-xl text-[10px] font-black uppercase bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+            <Dices size={12} className="mr-1.5" /> Random
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleReverse} className="h-10 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-all">
-            <ArrowRightLeft size={14} className="mr-2" /> Reverse
+          <Button variant="secondary" size="sm" onClick={() => handleGenerate('sorted')} className="h-9 rounded-xl text-[10px] font-black uppercase">
+            <PlayCircle size={12} className="mr-1.5" /> Sorted
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => handleGenerate('random')} className="h-10 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-all">
-            <Dices size={14} className="mr-2" /> Random
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => handleGenerate('sorted')} className="h-10 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-all">
-            <PlayCircle size={14} className="mr-2" /> Sorted
-          </Button>
-          <Button variant="ghost" size="sm" className="h-10 rounded-xl text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10" onClick={handleClear}>
-            <Trash2 size={14} className="mr-2" /> Clear All
+          <Button variant="ghost" size="sm" className="h-9 rounded-xl text-[10px] font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 uppercase col-span-2" onClick={handleClear}>
+            <Trash2 size={12} className="mr-1.5" /> Clear Structure
           </Button>
         </div>
       </div>

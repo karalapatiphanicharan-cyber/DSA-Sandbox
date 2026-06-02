@@ -8,14 +8,8 @@ import { CircularQueueVisualizer } from '../visualizers/CircularQueueVisualizer'
 import { DequeVisualizer } from '../visualizers/DequeVisualizer';
 import { PriorityQueueVisualizer } from '../visualizers/PriorityQueueVisualizer';
 import { LinkedListVisualizer } from '../visualizers/LinkedListVisualizer';
-import { DoublyLinkedListVisualizer } from '../visualizers/DoublyLinkedListVisualizer';
-import { CircularLinkedListVisualizer } from '../visualizers/CircularLinkedListVisualizer';
-import { BSTVisualizer } from '../visualizers/BSTVisualizer';
-import { AVLVisualizer } from '../visualizers/AVLVisualizer';
-import { HeapVisualizer } from '../visualizers/HeapVisualizer';
 import { TrieVisualizer } from '../visualizers/TrieVisualizer';
-import { BinaryTreeVisualizer } from '../visualizers/BinaryTreeVisualizer';
-import { RedBlackTreeVisualizer } from '../visualizers/RedBlackTreeVisualizer';
+import { TreeVisualizer } from '../visualizers/TreeVisualizer';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const VisualizationCanvas: React.FC = () => {
@@ -28,14 +22,16 @@ export const VisualizationCanvas: React.FC = () => {
       case 'CIRCULAR_QUEUE': return <CircularQueueVisualizer />;
       case 'DEQUE': return <DequeVisualizer />;
       case 'PRIORITY_QUEUE': return <PriorityQueueVisualizer />;
-      case 'LINKED_LIST': return <LinkedListVisualizer />;
-      case 'DOUBLY_LINKED_LIST': return <DoublyLinkedListVisualizer />;
-      case 'CIRCULAR_LINKED_LIST': return <CircularLinkedListVisualizer />;
-      case 'BINARY_TREE': return <BinaryTreeVisualizer />;
-      case 'BINARY_SEARCH_TREE': return <BSTVisualizer />;
-      case 'AVL_TREE': return <AVLVisualizer />;
-      case 'RED_BLACK_TREE': return <RedBlackTreeVisualizer />;
-      case 'HEAP': return <HeapVisualizer />;
+      case 'LINKED_LIST':
+      case 'DOUBLY_LINKED_LIST':
+      case 'CIRCULAR_LINKED_LIST':
+          return <LinkedListVisualizer />;
+      case 'BINARY_TREE':
+      case 'BINARY_SEARCH_TREE':
+      case 'AVL_TREE':
+      case 'RED_BLACK_TREE':
+      case 'HEAP':
+          return <TreeVisualizer />;
       case 'TRIE': return <TrieVisualizer />;
       default: return <StackVisualizer />;
     }
