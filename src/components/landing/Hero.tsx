@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, useScroll, useTransform, Variants } from 'framer-motion';
-import { Layers, Sparkles, Play, Shield, Zap } from 'lucide-react';
+import { Layers, Sparkles, Play, Shield, Zap, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -62,9 +62,17 @@ export const Hero: React.FC = () => {
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden bg-[#F5F7FB] dark:bg-slate-950 selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100">
-      <div className="absolute top-8 right-8 z-50">
+      <div className="absolute top-8 left-8 z-50 flex items-center space-x-3">
+        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+          <Layers className="text-white w-6 h-6" />
+        </div>
+        <span className="font-black text-xl tracking-tight text-slate-800 dark:text-slate-100 uppercase">DSA Sandbox</span>
+      </div>
+
+      <div className="absolute top-8 right-8 z-50 flex items-center space-x-4">
         <ThemeToggle />
       </div>
+
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <FloatingNode x="10%" y="20%" size={120} color="bg-indigo-400" delay={0} duration={8} />
@@ -123,13 +131,15 @@ export const Hero: React.FC = () => {
               Launch Sandbox <Play size={18} className="ml-3 fill-current group-hover:scale-110 transition-transform" />
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-16 px-10 rounded-2xl border-white/80 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xl border shadow-sm transition-all duration-300 hover:-translate-y-1"
-          >
-            View Demo
-          </Button>
+          <Link href="/sandbox">
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-16 px-10 rounded-2xl border-white/80 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl hover:bg-white/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xl border shadow-sm transition-all duration-300 hover:-translate-y-1 group"
+            >
+              Explore Structures <ArrowRight size={18} className="ml-3 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </motion.div>
 
         <motion.div
@@ -174,9 +184,9 @@ export const Hero: React.FC = () => {
           />
           <defs>
             <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="var(--color-primary)" />
-              <stop offset="50%" stopColor="var(--color-purple-500)" />
-              <stop offset="100%" stopColor="var(--color-cyan-500)" />
+              <stop offset="0%" stopColor="#6366F1" />
+              <stop offset="50%" stopColor="#8B5CF6" />
+              <stop offset="100%" stopColor="#06b6d4" />
             </linearGradient>
           </defs>
         </svg>

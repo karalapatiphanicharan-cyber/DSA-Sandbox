@@ -32,12 +32,15 @@ export const useSandboxStore = create<SandboxState>((set) => ({
   animationSpeed: 500,
   maxSize: 10,
 
-  setStructure: (type, category) => set({
-    currentStructure: type,
-    currentCategory: category,
-    data: [],
-    treeData: null,
-    listData: null
+  setStructure: (type, category) => set((state) => {
+    if (state.currentStructure === type) return {};
+    return {
+      currentStructure: type,
+      currentCategory: category,
+      data: [],
+      treeData: null,
+      listData: null
+    };
   }),
   setData: (data) => set({ data }),
   setTreeData: (treeData) => set({ treeData }),

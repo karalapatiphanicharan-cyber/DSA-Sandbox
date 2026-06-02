@@ -57,10 +57,12 @@ export const VisualizationCanvas: React.FC = () => {
       <div className="absolute top-8 right-8 z-10 flex items-center space-x-2">
          <div className="flex -space-x-2">
             {[1, 2, 3].map((i) => (
-               <div key={i} className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 bg-slate-200 dark:bg-slate-700 overflow-hidden" />
+               <div key={i} className={`w-6 h-6 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center overflow-hidden text-[8px] font-bold text-white ${i === 1 ? 'bg-indigo-500' : i === 2 ? 'bg-purple-500' : 'bg-cyan-500'}`}>
+                 {String.fromCharCode(64 + i)}
+               </div>
             ))}
          </div>
-         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Learners</span>
+         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Sandbox</span>
       </div>
 
       <AnimatePresence mode="wait">
