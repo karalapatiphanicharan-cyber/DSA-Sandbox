@@ -78,12 +78,13 @@ export default function SandboxPage() {
                <div className="h-full flex flex-col">
                   <Tabs defaultValue="learning" className="flex-1 flex flex-col">
                     <div className="px-4 pt-8 border-b">
-                      <TabsList className="w-full grid grid-cols-3 grid-rows-2 gap-1 mb-4 h-20">
+                      <TabsList className="w-full grid grid-cols-4 grid-rows-2 gap-1 mb-4 h-20">
                         <TabsTrigger value="learning" className="text-[10px]">Info</TabsTrigger>
                         <TabsTrigger value="complexity" className="text-[10px]">Stats</TabsTrigger>
                         <TabsTrigger value="history" className="text-[10px]">Log</TabsTrigger>
                         <TabsTrigger value="code" className="text-[10px]">Code</TabsTrigger>
                         <TabsTrigger value="interview" className="text-[10px]">Quiz</TabsTrigger>
+                        <TabsTrigger value="challenges" className="text-[10px]">Quest</TabsTrigger>
                         <TabsTrigger value="performance" className="text-[10px]">Lab</TabsTrigger>
                       </TabsList>
                     </div>
@@ -93,6 +94,7 @@ export default function SandboxPage() {
                       <TabsContent value="history" className="m-0"><HistoryPanel /></TabsContent>
                       <TabsContent value="code" className="m-0"><CodeGenerator /></TabsContent>
                       <TabsContent value="interview" className="m-0"><InterviewPanel /></TabsContent>
+                      <TabsContent value="challenges" className="m-0"><ChallengeMode /></TabsContent>
                       <TabsContent value="performance" className="m-0"><PerformanceLab /></TabsContent>
                     </ScrollArea>
                   </Tabs>

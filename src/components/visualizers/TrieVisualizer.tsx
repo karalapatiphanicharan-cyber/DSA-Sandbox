@@ -9,78 +9,55 @@ interface TrieNodeProps {
   node: TreeState;
   x: number;
   y: number;
-  char: string;
   level: number;
 }
 
-const TrieNodeComp: React.FC<TrieNodeProps> = ({ node, x, y, char, level }) => {
-  const children = node.children ? Object.entries(node.children) : [];
-  const spacing = 150 / (level + 1);
+const TrieNode: React.FC<TrieNodeProps> = ({ node, x, y, level }) => {
+  const children = Object.entries(node.children || {});
+  const spacing = 140 / Math.pow(1.3, level);
 
   return (
-    <g>
-      {children.map(([childChar, childNode], i) => {
-        const childX = x + (i - (children.length - 1) / 2) * spacing;
-        const childY = y + 80;
-        return (
-          <React.Fragment key={childChar}>
-            <line
-              x1={x} y1={y} x2={childX} y2={childY}
-              stroke="var(--color-slate-300)" strokeWidth="2"
-              className="dark:stroke-slate-700"
-            />
-            <TrieNodeComp
-              node={childNode}
-              x={childX}
-              y={childY}
-              char={childChar}
-              level={level + 1}
-            />
-          </React.Fragment>
-        );
+    <motion.g layout>
+      {children.map(([, child], i) => {
+          const childX = x + (i - (children.length - 1) / 2) * spacing;
+          const childY = y + 80;
+          return (
+              <React.Fragment key={child.id}>
+                  <motion.line
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+                    x1={x} y1={y} x2={childX} y2={childY}
+                    stroke="var(--color-slate-200)" strokeWidth="2"
+                  />
+                  <TrieNode node={child} x={childX} y={childY} level={level + 1} />
+              </React.Fragment>
+          );
       })}
 
-      <motion.g
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      >
+      <motion.g initial={{ scale: 0 }} animate={{ scale: 1 }}>
         <circle
-          cx={x}
-          cy={y}
-          r="20"
-          fill="white"
-          stroke={node.isEndOfWord ? '#22c55e' : 'var(--color-primary)'}
-          strokeWidth="3"
-          className="drop-shadow-md dark:fill-slate-800"
+          cx={x} cy={y} r="20"
+          fill={node.isEndOfWord ? 'var(--color-indigo-500)' : 'white'}
+          stroke="var(--color-indigo-500)" strokeWidth="2"
         />
         <text
-          x={x}
-          y={y}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="font-black text-xs fill-slate-800 dark:fill-slate-100"
+          x={x} y={y} dy=".3em" textAnchor="middle"
+          className={`text-[10px] font-black ${node.isEndOfWord ? 'fill-white' : 'fill-slate-600'}`}
         >
-          {char || 'Root'}
+          {node.value || 'root'}
         </text>
       </motion.g>
-    </g>
+    </motion.g>
   );
 };
 
-export const TrieVisualizer: React.FC = () => {
-  const { treeData } = useSandboxStore();
+export const TrieVisualizer: React.FC<{ data?: TreeState | null }> = ({ data: propsData }) => {
+  const { treeData: storeData } = useSandboxStore();
+  const treeData = propsData !== undefined ? propsData : storeData;
 
   return (
     <div className="h-full w-full bg-slate-50/50 dark:bg-slate-950 overflow-auto p-12">
-      <svg width="100%" height="100%" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet">
-        {treeData ? (
-          <TrieNodeComp node={treeData} x={500} y={100} char="" level={0} />
-        ) : (
-          <text x="500" y="400" textAnchor="middle" className="fill-slate-400 font-bold uppercase tracking-widest">
-            Trie Empty
-          </text>
-        )}
+      <svg width="1200" height="800" viewBox="0 0 1200 800" className="mx-auto">
+        {treeData && <TrieNode node={treeData} x={600} y={50} level={0} />}
       </svg>
     </div>
   );

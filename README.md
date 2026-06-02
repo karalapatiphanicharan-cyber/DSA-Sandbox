@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DSA Sandbox: Stack, Queue & Tree Visualizer
 
-## Getting Started
+A premium, interactive learning platform designed to master data structures through real-time visualization, complexity analysis, and hands-on practice.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **14+ Data Structures**: Including Stacks, Queues (Circular, Priority, Deque), Linked Lists (Singly, Doubly, Circular), and Trees (BST, AVL, Red-Black, Heap, Trie).
+- **Interactive Visualization**: Smooth, animated transitions using Framer Motion to visualize every push, pop, rotation, and swap.
+- **Time Travel Debugging**: Complete history of operations allowing you to undo, redo, and replay your data structure's evolution.
+- **Compare Mode**: Side-by-side analysis of different structures to understand their trade-offs in real-time.
+- **Code Generation**: Instant code snippets in Python, JavaScript, Java, and C++ matching your current sandbox state.
+- **Complexity Analyzer**: Visual breakdown of time and space complexity for every operation.
+- **Interview & Challenge Mode**: Gamified learning with quizzes and timed challenges to test your knowledge.
+- **Performance Lab**: Benchmark algorithms and visualize efficiency using interactive charts.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: Next.js 15 (App Router)
+- **Styling**: Tailwind CSS v4 + ShadCN UI
+- **Animations**: Framer Motion
+- **State Management**: Zustand
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Language**: TypeScript
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 Design System
 
-## Learn More
+The application features a premium **Neumorphism + Glassmorphism** hybrid interface, inspired by modern tools like Linear and Raycast. It supports both **Light and Dark modes** with smooth transitions.
 
-To learn more about Next.js, take a look at the following resources:
+## 🏁 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install dependencies: `npm install`
+2. Run development server: `npm run dev`
+3. Open [http://localhost:3000](http://localhost:3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📁 Project Structure
 
-## Deploy on Vercel
+- `src/components/visualizers`: Core visualization engines for each data structure.
+- `src/utils/treeLogic.ts`: Robust, immutable implementation of tree algorithms.
+- `src/store`: Unified state management for the sandbox and operation history.
+- `src/components/sandbox`: Modular panels for the 3-column interactive environment.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Built with ❤️ for educational excellence.

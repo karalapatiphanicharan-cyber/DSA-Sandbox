@@ -3,9 +3,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSandboxStore } from '@/store/sandboxStore';
+import { StackItem } from '@/types/structures';
 
-export const PriorityQueueVisualizer: React.FC = () => {
-  const { data } = useSandboxStore();
+export const PriorityQueueVisualizer: React.FC<{ data?: StackItem[] }> = ({ data: propsData }) => {
+  const { data: storeData } = useSandboxStore();
+  const data = propsData || storeData;
   const sortedData = [...data].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
   return (

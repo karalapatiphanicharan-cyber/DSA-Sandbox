@@ -3,9 +3,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSandboxStore } from '@/store/sandboxStore';
+import { StackItem } from '@/types/structures';
 
-export const QueueVisualizer: React.FC = () => {
-  const { data } = useSandboxStore();
+export const QueueVisualizer: React.FC<{ data?: StackItem[] }> = ({ data: propsData }) => {
+  const { data: storeData } = useSandboxStore();
+  const data = propsData || storeData;
 
   return (
     <div className="relative h-full w-full flex items-center justify-start p-16 overflow-x-auto bg-[var(--color-slate-50)] dark:bg-slate-950/50">
