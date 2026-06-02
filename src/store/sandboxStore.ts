@@ -4,9 +4,9 @@ import { StructureType, Category, TreeState, ListState, StackItem } from '../typ
 interface SandboxState {
   currentStructure: StructureType;
   currentCategory: Category;
-  data: StackItem[]; // Used for stacks/queues
-  treeData: TreeState | null; // Used for trees
-  listData: ListState | null; // Used for linked lists
+  data: StackItem[];
+  treeData: TreeState | null;
+  listData: ListState | null;
   isAnimating: boolean;
   animationSpeed: number;
   maxSize: number;
