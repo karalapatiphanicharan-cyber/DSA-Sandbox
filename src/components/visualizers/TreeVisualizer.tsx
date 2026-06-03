@@ -16,61 +16,61 @@ export const TreeVisualizer: React.FC<{ data?: TreeState | null, structure?: str
   const treeData = propsData !== undefined ? propsData : storeData;
   const currentStructure = propsStructure || storeStructure;
 
-  const getTreeLayout = React.useCallback((node: TreeState | null, x: number, y: number, level: number): TreeElement[] => {
+  const getTreeLayout = React.useCallback((node: TreeState | null, x: number, y: number, level: number, offset: number): TreeElement[] => {
     if (!node) return [];
 
     const elements: TreeElement[] = [];
-    const spacing = 180 / Math.pow(1.5, level);
+    const spacing = offset;
 
     elements.push({ node, x, y });
 
     if (node.left) {
-      elements.push(...getTreeLayout(node.left, x - spacing, y + 100, level + 1));
+      elements.push(...getTreeLayout(node.left, x - spacing, y + 80, level + 1, spacing / 1.8));
     }
     if (node.right) {
-      elements.push(...getTreeLayout(node.right, x + spacing, y + 100, level + 1));
+      elements.push(...getTreeLayout(node.right, x + spacing, y + 80, level + 1, spacing / 1.8));
     }
 
     return elements;
   }, []);
 
-  const layout = React.useMemo(() => getTreeLayout(treeData, 500, 80, 0), [treeData, getTreeLayout]);
+  const layout = React.useMemo(() => getTreeLayout(treeData, 600, 60, 0, 200), [treeData, getTreeLayout]);
 
-  const renderLines = (node: TreeState | null, x: number, y: number, level: number): React.ReactNode[] => {
+  const renderLines = (node: TreeState | null, x: number, y: number, level: number, offset: number): React.ReactNode[] => {
       if (!node) return [];
       const lines: React.ReactNode[] = [];
-      const spacing = 180 / Math.pow(1.5, level);
+      const spacing = offset;
 
       if (node.left) {
           lines.push(
               <motion.line
                 key={`line-l-${node.id}`}
                 initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                x1={x} y1={y} x2={x - spacing} y2={y + 100}
+                x1={x} y1={y} x2={x - spacing} y2={y + 80}
                 stroke="var(--color-slate-300)" strokeWidth="2"
               />
           );
-          lines.push(...renderLines(node.left, x - spacing, y + 100, level + 1));
+          lines.push(...renderLines(node.left, x - spacing, y + 80, level + 1, spacing / 1.8));
       }
       if (node.right) {
           lines.push(
             <motion.line
               key={`line-r-${node.id}`}
               initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-              x1={x} y1={y} x2={x + spacing} y2={y + 100}
+              x1={x} y1={y} x2={x + spacing} y2={y + 80}
               stroke="var(--color-slate-300)" strokeWidth="2"
             />
         );
-        lines.push(...renderLines(node.right, x + spacing, y + 100, level + 1));
+        lines.push(...renderLines(node.right, x + spacing, y + 80, level + 1, spacing / 1.8));
       }
       return lines;
   };
 
   return (
     <div className="h-full w-full bg-slate-50/50 dark:bg-slate-950 overflow-auto p-12 relative">
-      <svg width="1000" height="800" viewBox="0 0 1000 800" className="mx-auto">
+      <svg width="1200" height="800" viewBox="0 0 1200 800" className="mx-auto">
         <g>
-            {treeData && renderLines(treeData, 500, 80, 0)}
+            {treeData && renderLines(treeData, 600, 60, 0, 200)}
         </g>
         <AnimatePresence>
             {layout.map(({ node, x, y }) => (

@@ -10,6 +10,9 @@ interface SandboxState {
   isAnimating: boolean;
   animationSpeed: number;
   maxSize: number;
+  front: number;
+  rear: number;
+  size: number;
 
   // Actions
   setStructure: (type: StructureType, category: Category) => void;
@@ -19,6 +22,7 @@ interface SandboxState {
   setIsAnimating: (isAnimating: boolean) => void;
   setAnimationSpeed: (speed: number) => void;
   setMaxSize: (size: number) => void;
+  setQueueState: (state: { front: number; rear: number; size: number }) => void;
   reset: () => void;
 }
 
@@ -31,6 +35,9 @@ export const useSandboxStore = create<SandboxState>((set) => ({
   isAnimating: false,
   animationSpeed: 500,
   maxSize: 10,
+  front: 0,
+  rear: -1,
+  size: 0,
 
   setStructure: (type, category) => set((state) => {
     if (state.currentStructure === type) return {};
@@ -39,7 +46,10 @@ export const useSandboxStore = create<SandboxState>((set) => ({
       currentCategory: category,
       data: [],
       treeData: null,
-      listData: null
+      listData: null,
+      front: 0,
+      rear: -1,
+      size: 0
     };
   }),
   setData: (data) => set({ data }),
@@ -48,5 +58,6 @@ export const useSandboxStore = create<SandboxState>((set) => ({
   setIsAnimating: (isAnimating) => set({ isAnimating }),
   setAnimationSpeed: (animationSpeed) => set({ animationSpeed }),
   setMaxSize: (maxSize) => set({ maxSize }),
-  reset: () => set({ data: [], treeData: null, listData: null, isAnimating: false }),
+  setQueueState: (queueState) => set(queueState),
+  reset: () => set({ data: [], treeData: null, listData: null, isAnimating: false, front: 0, rear: -1, size: 0 }),
 }));

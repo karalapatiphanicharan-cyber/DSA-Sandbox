@@ -6,6 +6,9 @@ export interface HistoryStateSnapshot {
   treeData: TreeState | null;
   listData: ListState | null;
   currentStructure: StructureType;
+  front?: number;
+  rear?: number;
+  size?: number;
   timestamp: number;
 }
 

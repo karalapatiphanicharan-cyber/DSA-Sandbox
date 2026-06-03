@@ -95,7 +95,7 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
     let curr = newNode;
     while (curr !== newRoot && curr.parent?.color === 'red') {
         if (curr.parent === curr.parent.parent?.left) {
-            const uncle = curr.parent.parent.right;
+            const uncle = curr.parent.parent?.right;
             if (uncle?.color === 'red') {
                 curr.parent.color = 'black';
                 uncle.color = 'black';
@@ -111,20 +111,20 @@ export const insertRBT = (root: TreeState | null, value: number): TreeState => {
                 newRoot = rightRotateRBT(newRoot, curr.parent!.parent!);
             }
         } else {
-            const uncle = curr.parent!.parent!.left;
+            const uncle = curr.parent!.parent?.left;
             if (uncle?.color === 'red') {
                 curr.parent!.color = 'black';
                 uncle.color = 'black';
                 curr.parent!.parent!.color = 'red';
                 curr = curr.parent!.parent!;
             } else {
-                if (curr === curr.parent!.left) {
-                    curr = curr.parent!;
+                if (curr === curr.parent?.left) {
+                    curr = curr.parent;
                     newRoot = rightRotateRBT(newRoot, curr);
                 }
-                curr.parent!.color = 'black';
-                curr.parent!.parent!.color = 'red';
-                newRoot = leftRotateRBT(newRoot, curr.parent!.parent!);
+                if (curr.parent) curr.parent.color = 'black';
+                if (curr.parent?.parent) curr.parent.parent.color = 'red';
+                if (curr.parent?.parent) newRoot = leftRotateRBT(newRoot, curr.parent.parent);
             }
         }
     }
