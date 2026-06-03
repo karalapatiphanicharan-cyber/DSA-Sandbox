@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 export const TimelineSlider: React.FC = () => {
   const { history, currentIndex, jumpTo, undo, redo, clearHistory } = useHistoryStore();
-  const { setData, setTreeData, setListData, setStructure } = useSandboxStore();
+  const { setData, setTreeData, setListData, setStructure, setQueueState } = useSandboxStore();
   const playRef = useRef<NodeJS.Timeout | null>(null);
   const [isPlaying, setIsPlaying] = React.useState(false);
 
@@ -19,9 +19,12 @@ export const TimelineSlider: React.FC = () => {
       setData(state.data);
       setTreeData(state.treeData);
       setListData(state.listData);
+      if (state.front !== undefined) {
+          setQueueState({ front: state.front, rear: state.rear!, size: state.size! });
+      }
       setStructure(state.currentStructure, state.currentStructure.includes('TREE') ? 'TREES' : state.currentStructure.includes('LIST') ? 'LINKED_LISTS' : 'STACKS');
     }
-  }, [currentIndex, history, setData, setTreeData, setListData, setStructure]);
+  }, [currentIndex, history, setData, setTreeData, setListData, setStructure, setQueueState]);
 
   const togglePlay = () => {
     if (isPlaying) {

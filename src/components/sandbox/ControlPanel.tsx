@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useSandboxStore } from '@/store/sandboxStore';
 import { STRUCTURES } from '@/data/structures';
-import { StructureType, TreeState, ListState } from '@/types/structures';
+import { StructureType, TreeState, ListState, StackItem } from '@/types/structures';
 import {
   Plus, Minus, Trash2,
   Settings2, PlayCircle, Dices,
@@ -39,6 +39,10 @@ export const ControlPanel: React.FC = () => {
     setListData,
     maxSize,
     setMaxSize,
+    front,
+    rear,
+    size,
+    setQueueState,
   } = useSandboxStore();
 
   const [inputValue, setInputValue] = useState('');
@@ -68,11 +72,23 @@ export const ControlPanel: React.FC = () => {
     const value = isNaN(numValue) ? inputValue : numValue;
 
     if (currentCategory === 'TREES') {
+      if (currentStructure !== 'TRIE') {
+          const exists = (node: TreeState | null, val: number): boolean => {
+              if (!node) return false;
+              if (node.value === val) return true;
+              return val < (node.value as number) ? exists(node.left || null, val) : exists(node.right || null, val);
+          };
+          if (exists(treeData, numValue)) {
+              toast.warning(`Duplicate value ${numValue} ignored.`);
+              return;
+          }
+      }
+
       if (currentStructure === 'TRIE') {
         if (!inputValue) { toast.warning("Enter a word for Trie"); return; }
         const newTrie = insertTrie(treeData ? JSON.parse(JSON.stringify(treeData)) : null, inputValue);
         setTreeData(newTrie);
-        addToHistory({ data, treeData: newTrie, listData, currentStructure });
+        addToHistory({ data, treeData: newTrie, listData, currentStructure, front, rear, size });
         setInputValue('');
         toast.success(`Word "${inputValue}" inserted.`);
         return;
@@ -81,30 +97,19 @@ export const ControlPanel: React.FC = () => {
       if (currentStructure === 'HEAP') {
           const newHeap = insertHeap(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue || 0);
           setTreeData(newHeap);
-          addToHistory({ data, treeData: newHeap, listData, currentStructure });
+          addToHistory({ data, treeData: newHeap, listData, currentStructure, front, rear, size });
           setInputValue('');
           toast.success(`Value ${numValue} added to Heap.`);
           return;
       }
 
       let newTree: TreeState | null = null;
-      const exists = (node: TreeState | null, val: number): boolean => {
-        if (!node) return false;
-        if (node.value === val) return true;
-        return val < (node.value as number) ? exists(node.left || null, val) : exists(node.right || null, val);
-      };
-
-      if (exists(treeData, numValue)) {
-        toast.warning(`Duplicate value ${numValue} ignored.`);
-        return;
-      }
-
       if (currentStructure === 'AVL_TREE') newTree = insertAVL(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
       else if (currentStructure === 'RED_BLACK_TREE') newTree = insertRBT(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
       else newTree = insertBST(treeData ? JSON.parse(JSON.stringify(treeData)) : null, numValue);
 
       setTreeData(newTree);
-      addToHistory({ data, treeData: newTree, listData, currentStructure });
+      addToHistory({ data, treeData: newTree, listData, currentStructure, front, rear, size });
       setInputValue('');
       toast.success(`Inserted ${numValue}.`);
       return;
@@ -169,9 +174,27 @@ export const ControlPanel: React.FC = () => {
         }
       }
       setListData(newList);
-      addToHistory({ data, treeData, listData: newList, currentStructure });
+      addToHistory({ data, treeData, listData: newList, currentStructure, front, rear, size });
       setInputValue('');
       toast.success(`Node ${value} added.`);
+      return;
+    }
+
+    if (currentStructure === 'CIRCULAR_QUEUE') {
+      if (size >= maxSize) {
+        toast.error("Circular Queue Overflow: Capacity reached.");
+        return;
+      }
+      const newRear = (rear + 1) % maxSize;
+      const newItem = { id: generateId(), value, index: newRear };
+      const newData = [...data];
+      newData[newRear] = newItem;
+
+      setData(newData);
+      setQueueState({ front, rear: newRear, size: size + 1 });
+      addToHistory({ data: newData, treeData, listData, currentStructure });
+      setInputValue('');
+      toast.success(`Value ${value} enqueued.`);
       return;
     }
 
@@ -190,17 +213,43 @@ export const ControlPanel: React.FC = () => {
         newData = [newItem, ...data].map((it, i) => ({ ...it, index: i }));
     }
 
+    const newQueueState = { front: 0, rear: newData.length - 1, size: newData.length };
     setData(newData);
-    addToHistory({ data: newData, treeData, listData, currentStructure });
+    setQueueState(newQueueState);
+    addToHistory({ data: newData, treeData, listData, currentStructure, ...newQueueState });
     setInputValue('');
     toast.success("Added successfully.");
+  };
+
+  const handlePopPosition = () => {
+    if (!listData) { toast.error("List Underflow."); return; }
+    const currentLen = getListLength(listData);
+    const pos = Math.max(0, Math.min(currentLen - 1, Number(positionValue)));
+
+    if (pos === 0) { handlePop('head'); return; }
+
+    const newList = JSON.parse(JSON.stringify(listData)) as ListState;
+    let curr = newList;
+    for (let i = 0; i < pos - 1; i++) if (curr.next) curr = curr.next;
+
+    if (curr.next) {
+        const toDelete = curr.next;
+        curr.next = toDelete.next;
+        if (currentStructure === 'DOUBLY_LINKED_LIST' && curr.next && curr.next !== newList) {
+            curr.next.prev = curr;
+        }
+    }
+
+    setListData(newList);
+    addToHistory({ data, treeData, listData: newList, currentStructure, front, rear, size });
+    toast.success("Removed node at position.");
   };
 
   const handlePop = (location: 'default' | 'head' | 'tail' = 'default') => {
     if (currentCategory === 'TREES') {
       if (!treeData) { toast.error("Tree Underflow."); return; }
       setTreeData(null);
-      addToHistory({ data, treeData: null, listData, currentStructure });
+      addToHistory({ data, treeData: null, listData, currentStructure, front, rear, size });
       toast.success("Tree cleared.");
       return;
     }
@@ -233,8 +282,26 @@ export const ControlPanel: React.FC = () => {
       }
 
       setListData(newList);
-      addToHistory({ data, treeData, listData: newList, currentStructure });
+      addToHistory({ data, treeData, listData: newList, currentStructure, front, rear, size });
       toast.success("Removed node.");
+      return;
+    }
+
+    if (currentStructure === 'CIRCULAR_QUEUE') {
+      if (size === 0) {
+        toast.error("Circular Queue Underflow.");
+        return;
+      }
+      const newData = [...data];
+      // We don't actually delete the item in a real circular queue,
+      // but for visualization we might want to null it out or mark as inactive.
+    delete (newData as (StackItem | undefined)[])[front];
+
+      const newFront = (front + 1) % maxSize;
+      setData(newData);
+      setQueueState({ front: newFront, rear, size: size - 1 });
+      addToHistory({ data: newData, treeData, listData, currentStructure });
+      toast.success("Value dequeued.");
       return;
     }
 
@@ -250,26 +317,45 @@ export const ControlPanel: React.FC = () => {
       newData = data.slice(1);
     }
 
+    const newQueueState = { front: 0, rear: newData.length - 1, size: newData.length };
     setData(newData);
-    addToHistory({ data: newData, treeData, listData, currentStructure });
+    setQueueState(newQueueState);
+    addToHistory({ data: newData, treeData, listData, currentStructure, ...newQueueState });
     toast.success("Removed successfully.");
   };
 
   const handleGenerate = (type: 'random' | 'sorted' | 'reverse-sorted') => {
-    const vals = generateRandomArray(Math.floor(maxSize / 2));
+    const vals = generateRandomArray(maxSize);
     if (type === 'sorted') vals.sort((a, b) => a - b);
     if (type === 'reverse-sorted') vals.sort((a, b) => b - a);
 
+    if (currentStructure === 'CIRCULAR_QUEUE') {
+      const newData = new Array(maxSize);
+      vals.forEach((v, i) => {
+        newData[i] = { id: generateId(), value: v, index: i };
+      });
+      setData(newData);
+      setQueueState({ front: 0, rear: maxSize - 1, size: maxSize });
+      addToHistory({ data: newData, treeData, listData, currentStructure });
+      toast.success("Circular Queue filled with random data.");
+      return;
+    }
+
     if (currentCategory === 'TREES') {
       let root: TreeState | null = null;
-      Array.from(new Set(vals)).forEach(v => {
+      let sortedVals = Array.from(new Set(vals));
+      if (type === 'random') {
+          // Shuffle to avoid skewed trees for BST/RBT
+          sortedVals = sortedVals.sort(() => Math.random() - 0.5);
+      }
+      sortedVals.forEach(v => {
           if (currentStructure === 'AVL_TREE') root = insertAVL(root, v);
           else if (currentStructure === 'RED_BLACK_TREE') root = insertRBT(root, v);
           else if (currentStructure === 'HEAP') root = insertHeap(root, v);
           else root = insertBST(root, v);
       });
       setTreeData(root);
-      addToHistory({ data, treeData: root, listData, currentStructure });
+      addToHistory({ data, treeData: root, listData, currentStructure, front, rear, size });
     } else if (currentCategory === 'LINKED_LISTS') {
       const nodes: ListState[] = vals.map(v => ({ id: generateId(), value: v, next: null, prev: null }));
       nodes.forEach((node, i) => {
@@ -283,19 +369,62 @@ export const ControlPanel: React.FC = () => {
       }
       const finalHead = nodes.length > 0 ? nodes[0] : null;
       setListData(finalHead);
-      addToHistory({ data, treeData, listData: finalHead, currentStructure });
+      addToHistory({ data, treeData, listData: finalHead, currentStructure, front, rear, size });
     } else {
       const newData = vals.map((v, i) => ({ id: generateId(), value: v, priority: Math.floor(Math.random() * 10) + 1, index: i }));
       if (currentStructure === 'PRIORITY_QUEUE') newData.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      const newQueueState = { front: 0, rear: newData.length - 1, size: newData.length };
       setData(newData);
-      addToHistory({ data: newData, treeData, listData, currentStructure });
+      setQueueState(newQueueState);
+      addToHistory({ data: newData, treeData, listData, currentStructure, ...newQueueState });
     }
     toast.success(`Generated ${type} data.`);
   };
 
+  const handleLinkedListOp = (op: 'reverse' | 'sort' | 'middle' | 'cycle') => {
+    if (!listData) { toast.error("List is empty."); return; }
+    const nodes: ListState[] = [];
+    let curr: ListState | null = listData;
+    const visited = new Set();
+    while (curr && !visited.has(curr.id)) {
+        nodes.push({ ...curr });
+        visited.add(curr.id);
+        curr = curr.next;
+    }
+
+    if (op === 'reverse') {
+        nodes.reverse();
+        nodes.forEach((node, i) => {
+            node.next = nodes[i + 1] || null;
+            if (currentStructure === 'DOUBLY_LINKED_LIST') node.prev = nodes[i - 1] || null;
+        });
+        if (currentStructure === 'CIRCULAR_LINKED_LIST') nodes[nodes.length - 1].next = nodes[0];
+        const newList = nodes[0];
+        setListData(newList);
+        addToHistory({ data, treeData, listData: newList, currentStructure, front, rear, size });
+        toast.success("List reversed.");
+    } else if (op === 'sort') {
+        nodes.sort((a, b) => (a.value as number) - (b.value as number));
+        nodes.forEach((node, i) => {
+            node.next = nodes[i + 1] || null;
+            if (currentStructure === 'DOUBLY_LINKED_LIST') node.prev = nodes[i - 1] || null;
+        });
+        if (currentStructure === 'CIRCULAR_LINKED_LIST') nodes[nodes.length - 1].next = nodes[0];
+        const newList = nodes[0];
+        setListData(newList);
+        addToHistory({ data, treeData, listData: newList, currentStructure, front, rear, size });
+        toast.success("List sorted.");
+    } else if (op === 'middle') {
+        const mid = nodes[Math.floor(nodes.length / 2)];
+        toast.info(`Middle element is: ${mid.value}`);
+    } else if (op === 'cycle') {
+        toast.info(currentStructure === 'CIRCULAR_LINKED_LIST' ? "Cycle detected (Circular List)." : "No cycle detected.");
+    }
+  };
+
   const handleClear = () => {
     useSandboxStore.getState().reset();
-    addToHistory({ data: [], treeData: null, listData: null, currentStructure });
+    addToHistory({ data: [], treeData: null, listData: null, currentStructure, front: 0, rear: -1, size: 0 });
     toast.info("Sandbox reset.");
   };
 
@@ -375,10 +504,23 @@ export const ControlPanel: React.FC = () => {
           </div>
 
           {currentCategory === 'LINKED_LISTS' && (
-              <div className="grid grid-cols-3 gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => handleAdd('head')} className="h-9 text-[10px] font-bold rounded-lg"><ArrowUp size={12} className="mr-1"/> Head</Button>
-                  <Button variant="secondary" size="sm" onClick={() => handleAdd('tail')} className="h-9 text-[10px] font-bold rounded-lg"><ArrowDown size={12} className="mr-1"/> Tail</Button>
-                  <Button variant="secondary" size="sm" onClick={() => handleAdd('position')} className="h-9 text-[10px] font-bold rounded-lg"><MapPin size={12} className="mr-1"/> Pos</Button>
+              <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => handleAdd('head')} title="Insert at Beginning" className="h-9 text-[10px] font-bold rounded-lg"><ArrowUp size={12} className="mr-1"/> Head</Button>
+                      <Button variant="secondary" size="sm" onClick={() => handleAdd('tail')} title="Insert at End" className="h-9 text-[10px] font-bold rounded-lg"><ArrowDown size={12} className="mr-1"/> Tail</Button>
+                      <Button variant="secondary" size="sm" onClick={() => handleAdd('position')} title="Insert at Position" className="h-9 text-[10px] font-bold rounded-lg"><MapPin size={12} className="mr-1"/> Pos</Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handlePop('head')} title="Delete Head" className="h-9 text-[10px] font-bold rounded-lg text-rose-500">Del Head</Button>
+                      <Button variant="outline" size="sm" onClick={() => handlePop('tail')} title="Delete Tail" className="h-9 text-[10px] font-bold rounded-lg text-rose-500">Del Tail</Button>
+                      <Button variant="outline" size="sm" onClick={() => handlePopPosition()} title="Delete Position" className="h-9 text-[10px] font-bold rounded-lg text-rose-500 text-center">Del Pos</Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleLinkedListOp('reverse')} className="h-8 text-[9px] font-black uppercase tracking-tighter">Reverse</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleLinkedListOp('sort')} className="h-8 text-[9px] font-black uppercase tracking-tighter">Sort</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleLinkedListOp('middle')} className="h-8 text-[9px] font-black uppercase tracking-tighter">Find Middle</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleLinkedListOp('cycle')} className="h-8 text-[9px] font-black uppercase tracking-tighter">Detect Cycle</Button>
+                  </div>
               </div>
           )}
 

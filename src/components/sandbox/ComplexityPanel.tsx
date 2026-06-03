@@ -3,12 +3,83 @@
 import React from 'react';
 import { useSandboxStore } from '@/store/sandboxStore';
 import { STRUCTURES } from '@/data/structures';
-import { BarChart3, Clock, Box } from 'lucide-react';
+import { BarChart3, Clock, Box, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { TreeState, ListState } from '@/types/structures';
+
+const MetricCard: React.FC<{ label: string; value: string | number; color: string }> = ({ label, value }) => (
+  <div className={`p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800`}>
+    <div className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-1">{label}</div>
+    <div className={`text-sm font-black text-slate-700 dark:text-slate-200`}>{value}</div>
+  </div>
+);
 
 export const ComplexityPanel: React.FC = () => {
-  const { currentStructure } = useSandboxStore();
+  const { currentStructure, data, treeData, listData, size, maxSize, front, rear } = useSandboxStore();
   const info = STRUCTURES[currentStructure];
+
+  const getTreeMetrics = (node: TreeState | null): { count: number; height: number; blackHeight: number } => {
+    if (!node) return { count: 0, height: 0, blackHeight: 1 };
+    const left = getTreeMetrics(node.left || null);
+    const right = getTreeMetrics(node.right || null);
+    const bh = node.color === 'black' ? 1 + Math.max(left.blackHeight, right.blackHeight) : Math.max(left.blackHeight, right.blackHeight);
+    return {
+      count: 1 + left.count + right.count,
+      height: 1 + Math.max(left.height, right.height),
+      blackHeight: bh
+    };
+  };
+
+  const getListMetrics = (head: ListState | null): number => {
+    let count = 0;
+    let curr = head;
+    const visited = new Set();
+    while (curr && !visited.has(curr.id)) {
+        count++;
+        visited.add(curr.id);
+        curr = curr.next;
+    }
+    return count;
+  };
+
+  const renderMetrics = () => {
+    if (currentStructure === 'CIRCULAR_QUEUE') {
+      return (
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          <MetricCard label="Size" value={size} color="indigo" />
+          <MetricCard label="Capacity" value={maxSize} color="slate" />
+          <MetricCard label="Available" value={maxSize - size} color="emerald" />
+          <MetricCard label="Front / Rear" value={`${front} / ${rear === -1 ? 'X' : rear}`} color="amber" />
+        </div>
+      );
+    }
+    if (currentStructure.includes('TREE') || currentStructure === 'HEAP' || currentStructure === 'TRIE') {
+        const metrics = getTreeMetrics(treeData);
+        const isBalanced = (node: TreeState | null): boolean => {
+            if (!node) return true;
+            const lh = getTreeMetrics(node.left || null).height;
+            const rh = getTreeMetrics(node.right || null).height;
+            return Math.abs(lh - rh) <= 1 && isBalanced(node.left || null) && isBalanced(node.right || null);
+        };
+        const balanced = isBalanced(treeData);
+
+        return (
+            <div className="grid grid-cols-2 gap-2 mb-6">
+                <MetricCard label="Nodes" value={metrics.count} color="indigo" />
+                <MetricCard label="Height" value={metrics.height} color="purple" />
+                {currentStructure === 'AVL_TREE' && <MetricCard label="Balanced" value={balanced ? "Yes" : "No"} color={balanced ? "emerald" : "rose"} />}
+                {currentStructure === 'RED_BLACK_TREE' && <MetricCard label="Black H" value={metrics.blackHeight} color="slate" />}
+            </div>
+        );
+    }
+    const currentSize = currentStructure.includes('LINKED_LIST') ? getListMetrics(listData) : data.length;
+    return (
+        <div className="grid grid-cols-2 gap-2 mb-6">
+            <MetricCard label={currentStructure.includes('LINKED_LIST') ? "Nodes" : "Size"} value={currentSize} color="indigo" />
+            <MetricCard label="Capacity" value={maxSize} color="slate" />
+        </div>
+    );
+  };
 
   const complexityItems = [
     { label: 'Best Case', value: info.complexity.time.best, color: 'text-emerald-500' },
@@ -18,7 +89,14 @@ export const ComplexityPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2 text-violet-600 mb-4">
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center">
+          <Activity size={14} className="mr-2" /> Real-time State
+        </h4>
+        {renderMetrics()}
+      </div>
+
+      <div className="flex items-center space-x-2 text-violet-600 mb-4 pt-2 border-t">
         <BarChart3 size={20} />
         <h3 className="font-bold text-lg">Complexity Analysis</h3>
       </div>

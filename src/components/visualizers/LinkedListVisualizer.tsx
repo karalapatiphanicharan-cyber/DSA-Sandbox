@@ -76,11 +76,13 @@ export const LinkedListVisualizer: React.FC<{ data?: ListState | null, structure
               </div>
 
               {index === nodes.length - 1 && (
-                <div className="flex flex-col items-center ml-2">
+                <div className="flex flex-col items-center ml-2 relative">
                   <div className={`w-12 h-8 border-2 border-dashed ${isCircular ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200'} rounded-lg flex items-center justify-center`}>
                     <span className="text-[8px] font-black text-slate-400 uppercase">{isCircular ? 'HEAD' : 'NULL'}</span>
                   </div>
-                  <div className="mt-2 text-[8px] font-black text-slate-300 uppercase">TAIL</div>
+                  <div className="absolute -top-10 px-3 py-1 bg-rose-500 text-white text-[9px] font-black rounded-full shadow-lg">
+                    TAIL
+                  </div>
 
                   {isCircular && (
                       <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
